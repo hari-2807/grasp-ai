@@ -243,14 +243,6 @@ Phase 3  — App Store (Month 2-3)
            Apple Developer £80/year
            Google Play £20 once
 ```
-
----
-
-## How to Use This File
-1. Paste entire file at start of every new Claude chat
-2. One chat per step
-3. Error template:
-   STEP: [which step]
    FILE: [which file]
    ERROR: [exact error]
    WHAT I DID: [what you ran]
