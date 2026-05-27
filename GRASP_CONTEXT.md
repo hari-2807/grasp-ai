@@ -1,5 +1,4 @@
 # GRASP — Project Context File
-# Paste this at the start of every new Claude chat
 # Last updated: May 2026
 
 ---
