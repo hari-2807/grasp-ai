@@ -9,7 +9,7 @@ Users upload any document, image, YouTube video or URL.
 They get instant summary then chat with AI tutor about it.
 
 **Tagline:** "Upload anything. Grasp everything."
-**Goal:** Public product, Britcore AI portfolio, Global Talent Visa evidence
+**Goal:** Public product, Britcore AI portfolio
 **Status:** Step 0 complete — moving to Step 1
 
 ---
@@ -17,8 +17,6 @@ They get instant summary then chat with AI tutor about it.
 ## Owner
 - **Name:** Harshit Tripathi
 - **Company:** Britcore AI
-- **Background:** Lead Data Engineer, Boots UK. 9 years. Databricks Certified.
-- **Goal:** Global Talent Visa (Exceptional Talent) + 20 Agents in 30 Days
 
 ---
 
