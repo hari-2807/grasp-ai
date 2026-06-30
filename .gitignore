@@ -5,6 +5,7 @@ __pycache__/
 .DS_Store
 .venv/
 venv/
+venv_win/
 node_modules/
 *.egg-info/
 .streamlit/secrets.toml
