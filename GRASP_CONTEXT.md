@@ -216,7 +216,7 @@ grasp-ai/
 ---
 
 ## LLM Routing Logic
-```python
+```
 Analysis mode    → Claude Sonnet 4.6   (best reasoning)
 Teaching mode    → Claude Sonnet 4.6   (best reasoning)
 Summary          → Claude Haiku 4.5 / Gemini 3 Flash (routed by length)
