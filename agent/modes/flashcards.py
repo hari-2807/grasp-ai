@@ -50,7 +50,7 @@ def run(content: dict, gemini_key: str = None) -> dict:
     else:
         parse_error = None
 
-    cost = estimate_cost_gbp(_MODEL_ID, result["input_tokens"], result["output_tokens"])
+    cost = estimate_cost_gbp(MODEL_ID, result["input_tokens"], result["output_tokens"])
 
     return {
         "cards": cards,
