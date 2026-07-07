@@ -1,5 +1,5 @@
 # GRASP — Project Context File
-# Last updated: May 2026
+# Last updated: July 2026
 
 ---
 
@@ -10,7 +10,7 @@ They get instant summary then chat with AI tutor about it.
 
 **Tagline:** "Upload anything. Grasp everything."
 **Goal:** Public product
-**Status:** Step 0 complete — moving to Step 1
+**Status:** Step 3 in progress — AI engine + backend built, pending mobile app + deploy
 
 ---
 
@@ -22,7 +22,7 @@ They get instant summary then chat with AI tutor about it.
 
 ## Pricing — Final
 - **Free:** 3 uploads/month, summary only
-- **Pro:** £5/month — unlimited uploads, all 4 modes, all file types
+- **Pro:** £5/month — unlimited uploads, all 5 modes, all file types
 
 ---
 
@@ -31,12 +31,14 @@ They get instant summary then chat with AI tutor about it.
 - Images (diagrams, screenshots, handwritten notes)
 - YouTube URL (transcript extraction)
 - Web URL (scrape and summarise)
+- Audio/video (meeting recordings — MP3, MP4, WAV, M4A, WEBM)
 - Plain text (paste directly)
 
 ---
 
-## Modes (4 total)
+## Modes (5 total)
 - **Summary** — auto-generated on upload, TL;DR + key points
+- **Analysis** — deep findings, risks, action items, key numbers/dates
 - **Q&A** — chat with AI about document, sources shown
 - **Teaching** — AI explains like tutor, asks questions, gives feedback
 - **Flashcards** — generates revision cards from content
@@ -44,6 +46,7 @@ They get instant summary then chat with AI tutor about it.
 ## User Journey (Option C)
 Upload → Auto summary loads immediately
        → Persistent chat always available underneath
+       → Analysis mode button
        → Teaching mode button
        → Flashcards button
 
@@ -56,19 +59,20 @@ Upload → Auto summary loads immediately
 | Mobile app | Expo / React Native |
 | Backend API | FastAPI (Python) |
 | Hosting | Azure Container Apps |
-| LLM — Teaching | Claude Sonnet (Anthropic) |
-| LLM — Summary + Q&A | GPT-4o (OpenAI) |
-| LLM — Flashcards + Images | Gemini Flash (Google) |
+| LLM — Analysis + Teaching | Claude Sonnet 4.6 (Anthropic) |
+| LLM — Summary + Q&A | Claude Haiku 4.5 (Anthropic) |
+| LLM — Flashcards + Images | Gemini 3 Flash (Google) |
+| Audio Transcription | OpenAI Whisper (`whisper-1`) |
 | Embeddings | Azure OpenAI text-embedding-3-small |
 | Vector Store | Databricks Vector Search |
 | Document Storage | Azure Blob Storage (container: grasp-docs) |
 | Metadata + Chunks | Delta Lake (Unity Catalog) |
-| Auth | Google OAuth |
+| Auth | Google OAuth  + JWT (access/refresh tokens) |
 | Usage Tracking | Azure SQL Database |
-| Payments | Stripe (£5/month Pro) |
+| Payments | Stripe (£5/month Pro subscription) |
 | PDF Parsing | PyMuPDF |
-| Image Parsing | Gemini Flash Vision |
-| YouTube | youtube-transcript-api |
+| Image Parsing | Gemini Vision |
+| YouTube | youtube-transcript-api (v1.0+ instance API) |
 | Web Scraping | BeautifulSoup + requests |
 | Orchestration | Databricks Jobs |
 | Tracking | MLflow |
@@ -77,37 +81,50 @@ Upload → Auto summary loads immediately
 
 ---
 
+## Model Versions — Why They Changed
+
+| Old (May 2026 plan) | New (current) | Reason |
+|---|---|---|
+| GPT-4o (summary/QA) | Claude Haiku 4.5 | GPT-4o retired from API access Feb 2026 |
+| gemini-1.5-flash | Gemini 3 Flash | 1.5 series fully shut down Feb 2026 |
+| claude-sonnet-4-6 (unchanged) | claude-sonnet-4-6 | Still current, no change needed |
+| google-generativeai SDK | google-genai SDK | Old SDK deprecated, replaced by unified client |
+
+---
+
 ## Databricks
 ```
-Catalog:        grasp_catalog
-Schema:         grasp_poc
-Secret scope:   grasp-secrets
+Catalog:         grasp_catalog
+Schema:          grasp_poc
+Secret scope:    grasp-secrets
+Vector endpoint: grasp-vector-endpoint
 ```
 
 ### Delta Tables
 ```
-grasp_catalog.grasp_poc.documents     — raw chunks
-grasp_catalog.grasp_poc.embeddings    — vectors
-grasp_catalog.grasp_poc.sessions      — user sessions
+grasp_catalog.grasp_poc.documents — raw chunks (written by 01_ingest.py)
+grasp_catalog.grasp_poc.embeddings — vectors (written by 02_embed.py)
+grasp_catalog.grasp_poc.embeddings_index — Vector Search index (synced by 03_vector_index.py)
+grasp_catalog.grasp_poc.sessions — user sessions
 ```
 
 ### Notebooks
 ```
-databricks/notebooks/01_ingest.py
-databricks/notebooks/02_embed.py
-databricks/notebooks/03_vector_index.py
-databricks/notebooks/04_agent.py
+databricks/notebooks/01_ingest.py — chunk uploaded text, write to documents table
+databricks/notebooks/02_embed.py — embed chunks via Azure OpenAI, write to embeddings table
+databricks/notebooks/03_vector_index.py — sync embeddings into searchable Vector Search index
+databricks/notebooks/04_agent.py — retrieval-augmented Q&A (embed question → search → Claude)
 ```
 
 ---
 
 ## Azure Resources
 ```
-Resource Group:         rg-grasp-prod
-Blob Storage:           graspstore / container: grasp-docs
-Azure OpenAI:           text-embedding-3-small
-Azure SQL:              free tier — users + usage tables
-Container Apps:         grasp-env (hosts FastAPI)
+Resource Group:  rg-grasp-prod
+Blob Storage:    graspstore / container: grasp-docs
+Azure OpenAI:    text-embedding-3-small
+Azure SQL:       free tier — users + usage tables
+Container Apps:  grasp-env (hosts FastAPI)
 ```
 
 ### Azure SQL Schema
@@ -135,41 +152,46 @@ CREATE TABLE usage (
 ```
 grasp-ai/
 ├── api/
-│   ├── main.py                     ← FastAPI app entry point
-│   ├── routers/
-│   │   ├── upload.py               ← file upload endpoints
-│   │   ├── agent.py                ← summary/qa/teaching/flashcards
-│   │   ├── auth.py                 ← Google OAuth endpoints
-│   │   └── payments.py             ← Stripe endpoints
-│   ├── services/
-│   │   ├── blob_service.py         ← Azure Blob operations
-│   │   └── sql_service.py          ← Azure SQL operations
-│   └── models/
-│       └── schemas.py              ← Pydantic models
+│   ├── main.py ← FastAPI app entry point, CORS, lifespan, routers
+│ ├── auth/
+│ │   └── dependencies.py ← get_current_user JWT dependency
+│ ├── routers/
+│ │   ├── upload.py ← file/URL upload endpoints
+│ │   ├── agent.py ← summary/analysis/qa/teaching/flashcards
+│ │   ├── auth.py ← Google OAuth login + token refresh endpoints
+│ │   └── payments.py ← Stripe checkout + webhook endpoints
+│ ├── services/
+│ │   ├── blob_service.py ← Azure Blob operations
+│ │   ├── sql_service.py ← Azure SQL operations (pure data access)
+│ │ └── session_store.py ← parsed content lookup by session_id
+│ └── models/
+│     └── schemas.py ← Pydantic models
 ├── agent/
-│   ├── router.py                   ← detect input type
-│   ├── chunker.py                  ← 500-word chunks, 50-word overlap
-│   ├── embedder.py                 ← Azure OpenAI embeddings
-│   ├── vector_store.py             ← Databricks Vector Search
-│   ├── llm_router.py               ← route to Claude/GPT/Gemini
-│   ├── parsers/
-│   │   ├── pdf_parser.py
-│   │   ├── image_parser.py
-│   │   ├── youtube_parser.py
-│   │   └── web_parser.py
-│   ├── modes/
-│   │   ├── summary.py
-│   │   ├── qa.py
-│   │   ├── teaching.py
-│   │   └── flashcards.py
-│   └── llms/
-│       ├── claude.py
-│       ├── openai.py
-│       └── gemini.py
+│   ├── router.py ← detect input type (youtube vs web)
+│   ├── chunker.py ← 500-word chunks, 50-word overlap
+│   ├── embedder.py ← Azure OpenAI embeddings
+│   ├── vector_store.py ← Databricks Vector Search client
+│   ├── llm_router.py ← route to Claude/Gemini + cost estimation
+│ ├── parsers/
+│ │   ├── pdf_parser.py
+│ │   ├── image_parser.py
+│ │   ├── youtube_parser.py
+│ │   ├── web_parser.py
+│ │   └── audio_parser.py
+│ ├── modes/
+│ │   ├── summary.py
+│ │   ├── analysis.py
+│ │   ├── qa.py
+│ │   ├── teaching.py
+│ │   └── flashcards.py
+│ └── llms/
+│     ├── claude.py
+│     ├── openai.py ← Whisper transcription only
+│     └── gemini.py
 ├── auth/
-│   ├── google_oauth.py
-│   ├── usage_tracker.py
-│   └── stripe_webhook.py
+│    ├── google_oauth.py ← Google token verification + JWT issuance
+│    ├── usage_tracker.py ← Free tier limit business logic
+│    └── stripe_webhook.py ← Stripe event verification + handling
 ├── databricks/
 │   └── notebooks/
 │       ├── 01_ingest.py
@@ -183,9 +205,11 @@ grasp-ai/
 ├── .github/workflows/deploy.yml
 ├── .env.example
 ├── .cursorrules
+├── .gitignore
 ├── Dockerfile
 ├── requirements.txt
 ├── README.md
+├── app.py
 └── GRASP_CONTEXT.md
 ```
 
@@ -193,12 +217,14 @@ grasp-ai/
 
 ## LLM Routing Logic
 ```python
-Teaching mode    → Claude Sonnet  (best reasoning)
-Summary          → GPT-4o         (fast, structured)
-Q&A              → GPT-4o         (reliable)
-Flashcards       → Gemini Flash   (cheap, good enough)
-Image parsing    → Gemini Flash   (multimodal, cheapest)
-Embeddings       → Azure OpenAI   (text-embedding-3-small)
+Analysis mode    → Claude Sonnet 4.6   (best reasoning)
+Teaching mode    → Claude Sonnet 4.6   (best reasoning)
+Summary          → Claude Haiku 4.5 / Gemini 3 Flash (routed by length)
+Q&A              → Claude Haiku 4.5    (reliable, cost-efficient)
+Flashcards       → Gemini 3 Flash      (cheap, good enough)
+Image parsing    → Gemini 3 Flash      (multimodal, cheapest)
+Audio             → Whisper → Claude Haiku 4.5
+Embeddings       → Azure OpenAI        (text-embedding-3-small)
 ```
 
 ---
@@ -217,12 +243,29 @@ Text:           #FFFFFF / #8B8BA7
 
 ## 5 Steps Plan
 ```
-Step 0  — Setup + accounts + structure         ✅ DONE
-Step 1  — Azure + Databricks infrastructure
-Step 2  — FastAPI backend (auth/upload/usage/Stripe)
-Step 3  — AI engine (parse/embed/agent/4 modes)
-Step 4  — Expo mobile app (all screens)
-Step 5  — Deploy + ship (Azure + Expo Go link)
+Step 0 — Setup + accounts + structure ✅ DONE
+Step 1 — Azure + Databricks infrastructure ✅ DONE
+Step 2 — FastAPI backend (auth/upload/usage/Stripe) ✅ DONE
+Step 3 — AI engine (parse/embed/agent/5 modes) ✅ DONE
+Step 4 — Expo mobile app (all screens) 🔲 NOT STARTED
+Step 5 — Deploy + ship (Azure + Expo Go link) 🔲 NOT STARTED
+```
+
+---
+
+## Known Gaps / Next Priorities
+```
+Mobile app screens not built yet (Step 4)
+
+qa.py still uses truncate-and-stuff approach for context, not yet wired to the retrieval pipeline (chunker → embedder → vector_store) that 04_agent.py demonstrates — this is the highest-value upgrade
+
+Scanned/image-only PDFs have no OCR fallback (pdf_parser.py flags likely_scanned but nothing consumes it yet)
+
+Web scraping has no headless browser fallback for JS-heavy sites
+
+Whisper's long-term replacement path is unresolved industry-wide; monitor for updates before this becomes a bigger issue
+
+Refresh token rotation not implemented (flagged as future security upgrade)
 ```
 
 ---
