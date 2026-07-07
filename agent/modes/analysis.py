@@ -30,26 +30,42 @@ Rules:
 - Flag anything unusual, contradictory, or missing
 - Keep each bullet tight — one clear point per bullet"""
 
+MODEL_ID = "claude-sonnet-4-6"
+MAX_CHARS = 150000
+
 
 def run(content: dict, anthropic_key: str = None) -> dict:
     """Run deep analysis on content using Claude Sonnet."""
-    text = content["text"][:20000]
+    full_text = content["text"]
+    text = full_text[:MAX_CHARS]
+    was_truncated = len(full_text) > MAX_CHARS
 
-    result = claude.complete(
-        system=_SYSTEM,
-        user=f"Analyse this:\n\n{text}",
-        model="claude-sonnet-4-6",
-        max_tokens=1200,
-        api_key=anthropic_key,
-    )
+    try:
+        result = claude.complete(
+            system=_SYSTEM,
+            user=f"Analyse this:\n\n{text}",
+            model=MODEL_ID,
+            max_tokens=1200,
+            api_key=anthropic_key,
+        )
+    except Exception as e:
+        return {
+            "output": "Analysis failed — please try again.",
+            "error": str(e),
+            "model": "Claude Sonnet",
+            "model_id": MODEL_ID,
+            "cost_gbp": 0,
+            "truncated": was_truncated,
+        }
 
-    cost = estimate_cost_gbp("claude-sonnet-4-6", result["input_tokens"], result["output_tokens"])
+    cost = estimate_cost_gbp(MODEL_ID, result["input_tokens"], result["output_tokens"])
 
     return {
         "output": result["text"],
         "model": "Claude Sonnet",
-        "model_id": "claude-sonnet-4-6",
+        "model_id": MODEL_ID,
         "cost_gbp": cost,
         "input_tokens": result["input_tokens"],
         "output_tokens": result["output_tokens"],
+        "truncated": was_truncated,
     }
