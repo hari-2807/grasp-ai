@@ -1,31 +1,24 @@
 import uuid
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 
-from api.models.schemas import UploadResponse, UploadUrlRequest, SourceType
+from api.models.schemas import UploadResponse, UploadUrlRequest
 from agent.router import detect
 from agent.parsers import pdf_parser, image_parser, youtube_parser, web_parser, audio_parser
 from api.services.session_store import save_session
-from api.services.sql_service import get_user, log_usage, get_monthly_upload_count
+from auth.usage_tracker import check_upload_allowed,record_action
 from api.auth.dependencies import get_current_user
 
-router = APIRouter(prefix="/upload", tags=["upload"])
-
-FREE_TIER_MONTHLY_LIMIT = 3
+router = APIRouter(prefix="/upload", tags=["upload"]
 
 _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 _AUDIO_EXTENSIONS = {".mp3", ".mp4", ".wav", ".m4a", ".webm"}
 
 
 def _check_upload_allowed(user: dict):
-    if user["tier"] == "pro":
-        return
-    count = get_monthly_upload_count(user["user_id"])
-    if count >= FREE_TIER_MONTHLY_LIMIT:
-        raise HTTPException(
-            status_code=402,
-            detail=f"Free tier limit reached ({FREE_TIER_MONTHLY_LIMIT} uploads/month). Upgrade to Pro for unlimited uploads.",
-        )
-
+    result = check_upload_allowed(user["user_id"])
+    if not result["allowed"]:
+        raise HTTPException(status_code=402, detail=result["reason"])
+        
 
 def _save_and_respond(content: dict, user_id: str) -> UploadResponse:
     if content.get("error"):
@@ -39,7 +32,7 @@ def _save_and_respond(content: dict, user_id: str) -> UploadResponse:
 
     session_id = str(uuid.uuid4())
     save_session(session_id, content)
-    log_usage(user_id, action="upload")
+    record_action(user_id, action="upload")
 
     return UploadResponse(
         session_id=session_id,
