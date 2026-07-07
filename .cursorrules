@@ -1,27 +1,33 @@
+# GRASP — AI Assistant Rules
+
 You are helping build Grasp — an AI learning agent.
 
 Product: Upload any document, image, YouTube video or URL.
 Get instant summary then chat with AI tutor about it.
-Modes: Summary, Q&A, Teaching, Flashcards.
-Pricing: Free (3 uploads) / Pro £5/month unlimited.
+Modes: Summary, Analysis, Q&A, Teaching, Flashcards.
+Pricing: Free (3 uploads/month) / Pro £5/month unlimited.
 
 Stack:
 - Mobile: Expo / React Native
 - Backend: FastAPI (Python)
-- LLM Router: Claude (teaching) + GPT-4o (summary/QA) + Gemini (flashcards/images)
+- LLM Router: Claude Sonnet 4.6 (analysis, teaching) + Claude Haiku 4.5 (summary, Q&A) + Gemini 3 Flash (flashcards, images)
+- Audio Transcription: OpenAI Whisper
 - Embeddings: Azure OpenAI text-embedding-3-small
 - Vector Store: Databricks Vector Search
 - Storage: Azure Blob Storage
 - Database: Azure SQL
-- Auth: Google OAuth
-- Payments: Stripe £5/month
+- Auth: Google OAuth + JWT (access/refresh tokens)
+- Payments: Stripe £5/month subscription
 - Hosting: Azure Container Apps
 - CI/CD: GitHub Actions
 
 Rules:
-- Always write complete files never partial
-- All secrets via environment variables
+- Always write complete files, never partial
+- All secrets via environment variables — never hardcode API keys or connection strings
 - Every function needs a docstring
-- Modular structure always
-- When fixing bugs explain why it broke
+- Modular structure always — business logic (auth/, agent/) stays separate from HTTP routing (api/routers/) and raw data access (api/services/)
+- Every external call (LLM API, database, blob storage, third-party API) needs try/except error handling — never let unhandled exceptions reach the client
+- Every mode/parser function returns a consistent dict shape including an "error" key when applicable
+- When fixing bugs, explain why it broke before showing the fix
+- Model IDs are defined as named constants, never hardcoded inline in multiple places
 - Mobile first always
