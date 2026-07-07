@@ -1,4 +1,5 @@
 .env
+.env.local
 __pycache__/
 *.pyc
 *.pyo
@@ -9,7 +10,29 @@ venv_win/
 node_modules/
 *.egg-info/
 .streamlit/secrets.toml
-chroma_db/
 *.db
+
+# Expo / React Native mobile
 .expo/
 dist/
+ios/
+android/
+*.jks
+*.keystore
+
+# IDE
+.vscode/
+.idea/
+
+# Azure / Databricks credentials
+.databrickscfg
+.azure/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Logs and temp
+*.log
+tmp/
