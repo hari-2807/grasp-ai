@@ -1,12 +1,12 @@
 # LLMs
-anthropic>=0.40.0
-openai>=1.50.0
-google-generativeai>=0.8.0
+anthropic>=0.42.0
+openai>=1.55.0
+google-genai>=0.3.0
 
 # Web & YouTube parsing
 requests>=2.32.0
 beautifulsoup4>=4.12.0
-youtube-transcript-api>=0.6.2
+youtube-transcript-api>=1.0.0
 lxml>=5.3.0
 
 # PDF parsing
@@ -20,10 +20,13 @@ fastapi>=0.115.0
 uvicorn>=0.32.0
 python-multipart>=0.0.12
 pydantic>=2.9.0
+email-validator>=2.2.0
 
 # Auth & payments
 httpx>=0.27.0
 stripe>=11.0.0
+pyjwt>=2.9.0
+google-auth>=2.35.0
 
 # Azure
 azure-storage-blob>=12.23.0
@@ -31,6 +34,7 @@ pyodbc>=5.2.0
 
 # Databricks
 databricks-sdk>=0.34.0
+databricks-vectorsearch>=0.42
 
 # Web UI (web version)
 streamlit>=1.40.0
