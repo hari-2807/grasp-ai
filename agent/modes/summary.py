@@ -1,6 +1,8 @@
 from agent.llms import claude, gemini
 from agent.llm_router import route, estimate_cost_gbp
 
+MAX_CHARS = 100000
+
 _SYSTEM = """You are a smart assistant that makes complex things easy to understand.
 Read the content and give a SHORT, CLEAR summary in plain English.
 
@@ -30,21 +32,33 @@ def run(content: dict, anthropic_key: str = None, gemini_key: str = None) -> dic
 
     decision = route(source_type, word_count, "summary")
 
-    # truncate very long content — Haiku context is generous but keep cost low
-    trimmed = text[:15000]
+    full_text = text
+    trimmed = full_text[:MAX_CHARS]
+    was_truncated = len(full_text) > MAX_CHARS
     user_msg = f"Summarise this in short, plain English:\n\n{trimmed}"
 
-    if decision.provider == "gemini":
-        prompt = f"{_SYSTEM}\n\nUser: {user_msg}"
-        result = gemini.complete(prompt, api_key=gemini_key)
-    else:
-        result = claude.complete(
-            system=_SYSTEM,
-            user=user_msg,
-            model=decision.model,
-            max_tokens=500,
-            api_key=anthropic_key,
-        )
+    try:
+        if decision.provider == "gemini":
+            prompt = f"{_SYSTEM}\n\nUser: {user_msg}"
+            result = gemini.complete(prompt, model=decision.model, api_key=gemini_key)
+        else:
+            result = claude.complete(
+                system=_SYSTEM,
+                user=user_msg,
+                model=decision.model,
+                max_tokens=500,
+                api_key=anthropic_key,
+            )
+    except Exception as e:
+        return {
+            "output": "Couldn't generate a summary — please try again.",
+            "error": str(e),
+            "model": decision.label,
+            "model_id": decision.model,
+            "reason": decision.reason,
+            "cost_gbp": 0,
+            "truncated": was_truncated,
+        }
 
     cost = estimate_cost_gbp(decision.model, result["input_tokens"], result["output_tokens"])
 
@@ -56,4 +70,5 @@ def run(content: dict, anthropic_key: str = None, gemini_key: str = None) -> dic
         "cost_gbp": cost,
         "input_tokens": result["input_tokens"],
         "output_tokens": result["output_tokens"],
+        "truncated": was_truncated,
     }
