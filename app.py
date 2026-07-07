@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 from agent.router import detect
 from agent.parsers import web_parser, youtube_parser, pdf_parser, image_parser, audio_parser
-from agent.modes import summary, analysis, qa, flashcards
+from agent.modes import summary, analysis, qa, teaching, flashcards
 
 load_dotenv()
 
@@ -72,7 +72,7 @@ content = None  # parsed content dict — set by whichever tab runs
 with tab_url:
     url = st.text_input(
         "Paste any link",
-        placeholder="https://... or https://youtube.com/watch?v=...",
+        placeholder="https://... or [https://youtube.com/watch?v=](https://youtube.com/watch?v=)...",
         label_visibility="collapsed",
     )
     if st.button("Summarise", key="btn_url", type="primary") and url:
@@ -135,6 +135,8 @@ with tab_meeting:
     if st.button("Transcribe & Summarise", key="btn_meeting", type="primary") and uploaded_audio:
         if not openai_key:
             st.error("OpenAI API key required for audio transcription.")
+        elif uploaded_audio.size > 25 * 1024 * 1024:
+            st.error("File exceeds 25 MB — Whisper's API limit. Try trimming or compressing the recording.")
         else:
             with st.spinner("Transcribing with Whisper..."):
                 try:
@@ -239,7 +241,7 @@ if content:
                 with st.chat_message(msg["role"]):
                     st.markdown(msg["content"])
 
-            question = st.chat_input("Ask a question about this content...")
+            question = st.chat_input("Ask a question about this content...", key="qa_input")
             if question:
                 st.session_state["qa_history"].append({"role": "user", "content": question})
                 with st.spinner("Thinking..."):
@@ -265,6 +267,55 @@ if content:
                     f"Model: **{q['model']}** · "
                     f"Tokens: {q['input_tokens']:,} in / {q['output_tokens']:,} out · "
                     f"Cost: **{_cost_badge(q['cost_gbp'])}**"
+                )
+
+        st.divider()
+        
+        # ── teaching ──────────────────────────────────────────────────────────
+        st.markdown("#### 🎓 Teach Me This")
+        if not anthropic_key:
+            st.info("Add your Anthropic API key to start a tutoring session (uses Claude Sonnet).")
+        else:
+            if st.session_state.get("teaching_content_id") != id(content):
+                st.session_state["teaching_history"] = []
+                st.session_state.pop("teaching_last_result", None)
+                st.session_state["teaching_content_id"] = id(content)
+
+            if not st.session_state.get("teaching_history"):
+                st.caption("Start a tutoring session — the AI will explain concepts, ask you questions, and check your understanding.")
+
+            for msg in st.session_state.get("teaching_history", []):
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+
+            teaching_message = st.chat_input(
+                "Say 'start' to begin, or respond to the tutor...", key="teaching_input"
+            )
+            if teaching_message:
+                st.session_state["teaching_history"].append({"role": "user", "content": teaching_message})
+                with st.spinner("Thinking..."):
+                    try:
+                        t_result = teaching.run(
+                            content,
+                            teaching_message,
+                            history=st.session_state["teaching_history"][:-1],
+                            anthropic_key=anthropic_key,
+                        )
+                        st.session_state["teaching_history"].append(
+                            {"role": "assistant", "content": t_result["output"]}
+                        )
+                        st.session_state["teaching_last_result"] = t_result
+                    except Exception as e:
+                        st.session_state["teaching_history"].pop()
+                        st.error(f"Tutor couldn't respond: {e}")
+                st.rerun()
+
+            if "teaching_last_result" in st.session_state:
+                t = st.session_state["teaching_last_result"]
+                st.caption(
+                    f"Model: **{t['model']}** · "
+                    f"Tokens: {t['input_tokens']:,} in / {t['output_tokens']:,} out · "
+                    f"Cost: **{_cost_badge(t['cost_gbp'])}**"
                 )
 
         st.divider()
