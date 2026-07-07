@@ -54,8 +54,8 @@ def run(content: dict, gemini_key: str = None) -> dict:
 
     return {
         "cards": cards,
-        "errors": parse_error
-        "model": "Gemini Flash",
+        "errors": parse_error,
+        "model": "Gemini 3 Flash",
         "model_id": MODEL_ID,
         "cost_gbp": cost,
         "input_tokens": result["input_tokens"],
