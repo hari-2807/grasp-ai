@@ -9,7 +9,7 @@ def _client(api_key: str = None) -> anthropic.Anthropic:
 def complete(
     system: str,
     user: str,
-    model: str = "claude-haiku-4-5-20251001",
+    model: str = "claude-haiku-4-5",
     max_tokens: int = 1024,
     api_key: str = None,
 ) -> dict:
@@ -31,7 +31,7 @@ def complete(
 def chat(
     system: str,
     messages: list,
-    model: str = "claude-haiku-4-5-20251001",
+    model: str = "claude-haiku-4-5",
     max_tokens: int = 1024,
     api_key: str = None,
 ) -> dict:
