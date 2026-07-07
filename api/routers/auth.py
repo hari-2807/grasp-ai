@@ -1,42 +1,33 @@
-import os
 from fastapi import APIRouter, HTTPException
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 
 from api.models.schemas import UserOut
 from api.services.sql_service import get_user_by_email, create_user
+from auth.google_oauth import verify_google_credential, create_token_pair, refresh_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
-
-def _verify_google_token(credential: str) -> dict:
-    """Verify a Google ID token server-side and return the decoded payload."""
-    try:
-        id_info = id_token.verify_oauth2_token(
-            credential, google_requests.Request(), GOOGLE_CLIENT_ID
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid Google token: {e}")
-
-    if id_info.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
-        raise HTTPException(status_code=401, detail="Invalid token issuer")
-
-    return id_info
-
-
-@router.post("/google", response_model=UserOut)
+@router.post("/google")
 def google_login(credential: str):
-    """Verify a Google Sign-In credential and return or create the user."""
-    id_info = _verify_google_token(credential)
+    try:
+        id_info = verify_google_credential(credential)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
 
-    email = id_info.get("email")
-    if not email or not id_info.get("email_verified"):
-        raise HTTPException(status_code=401, detail="Google account email not verified")
-
+    email = id_info["email"]
     user = get_user_by_email(email)
     if user is None:
         user = create_user(email=email, google_sub=id_info["sub"], tier="free")
 
-    return user
+    tokens = create_token_pair(user["user_id"])
+    return {**tokens, "user": UserOut(**user)}
+
+
+@router.post("/refresh")
+def refresh(refresh_token: str):
+    try:
+        new_access_token = refresh_access_token(refresh_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+    return {"access_token": new_access_token, "token_type": "bearer"}
+
