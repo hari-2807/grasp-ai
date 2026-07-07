@@ -1,16 +1,16 @@
 from dataclasses import dataclass
 
-GBP_PER_USD = 0.79
+GBP_PER_USD = 0.75
 
 PRICING = {
-    "gemini-1.5-flash": {"input_per_m": 0.075, "output_per_m": 0.30},
-    "claude-haiku-4-5-20251001": {"input_per_m": 0.80, "output_per_m": 4.00},
+    "gemini-3-flash": {"input_per_m": 0.50, "output_per_m": 3.00},
+    "claude-haiku-4-5": {"input_per_m": 1.00, "output_per_m": 5.00},
     "claude-sonnet-4-6": {"input_per_m": 3.00, "output_per_m": 15.00},
 }
 
 MODEL_LABELS = {
-    "gemini-1.5-flash": "Gemini Flash",
-    "claude-haiku-4-5-20251001": "Claude Haiku",
+    "gemini-3-flash": "Gemini Flash",
+    "claude-haiku-4-5": "Claude Haiku",
     "claude-sonnet-4-6": "Claude Sonnet",
 }
 
@@ -33,29 +33,29 @@ def route(source_type: str, word_count: int, mode: str) -> RouterDecision:
 
     if source_type == "image":
         return RouterDecision(
-            "gemini-1.5-flash", "Gemini Flash", "gemini",
+            "gemini-3-flash", "Gemini Flash", "gemini",
             "Vision — Gemini Flash multimodal"
         )
 
     if source_type == "audio":
         return RouterDecision(
-            "claude-haiku-4-5-20251001", "Whisper + Claude Haiku", "openai+anthropic",
+            "claude-haiku-4-5", "Whisper + Claude Haiku", "openai+anthropic",
             "Audio transcribed by Whisper, summarised by Haiku"
         )
 
     if word_count < 2000:
         return RouterDecision(
-            "gemini-1.5-flash", "Gemini Flash", "gemini",
+            "gemini-3-flash", "Gemini Flash", "gemini",
             "Short content — Flash is sufficient and cheapest"
         )
     elif word_count < 8000:
         return RouterDecision(
-            "claude-haiku-4-5-20251001", "Claude Haiku", "anthropic",
+            "claude-haiku-4-5", "Claude Haiku", "anthropic",
             "Medium content — Haiku handles well at low cost"
         )
     else:
         return RouterDecision(
-            "claude-haiku-4-5-20251001", "Claude Haiku", "anthropic",
+            "claude-haiku-4-5", "Claude Haiku", "anthropic",
             "Long content — Haiku with chunking"
         )
 
