@@ -1,18 +1,29 @@
 import os
-from openai import OpenAI
+import tempfile
+
+from agent.llms import openai as openai_llm
 
 
 def transcribe(audio_bytes: bytes, filename: str = "audio.mp3", api_key: str = None) -> dict:
     """Transcribe an audio file using OpenAI Whisper and return the text."""
-    client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+    suffix = os.path.splitext(filename)[1] or ".mp3"
 
-    resp = client.audio.transcriptions.create(
-        model="whisper-1",
-        file=(filename, audio_bytes),
-        response_format="text",
-    )
+    try:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp:
+            tmp.write(audio_bytes)
+            tmp.flush()
+            result = openai_llm.transcribe(tmp.name, api_key=api_key)
+    except Exception as e:
+        return {
+            "title": "Meeting / Recording",
+            "text": "",
+            "word_count": 0,
+            "estimated_duration_mins": 0,
+            "source_type": "audio",
+            "error": str(e),
+        }
 
-    text = resp if isinstance(resp, str) else resp.text
+    text = result["text"]
     word_count = len(text.split())
 
     return {
