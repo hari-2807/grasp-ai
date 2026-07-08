@@ -358,6 +358,6 @@ MIT — free to use, modify and distribute.
 Built by **Harshit Tripathi**
 
 [![GitHub](https://img.shields.io/badge/GitHub-harshitboots-181717?style=flat-square&logo=github)](https://github.com/harshitboots)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat-square&logo=linkedin)](https://linkedin.com/in/harshittripathi)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/harshit-tripathi-503b11193/)
 
 </div>
